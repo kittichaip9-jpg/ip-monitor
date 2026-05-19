@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>IP Monitor Dashboard</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Noto+Sans+Thai:wght@400;600;700&family=Syne:wght@700;800&display=swap');
+:root{
+  --bg:#07090f;--surface:#0c1018;--card:#0f1420;
+  --border:#182030;--border2:#1e2d44;
+  --accent:#00e0ff;--accent2:#5c35ff;
+  --green:#00d97e;--red:#ff3d5a;--yellow:#ffb300;
+  --text:#d8e6f5;--muted:#4a6080;--muted2:#2a3d55;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Noto Sans Thai','JetBrains Mono',sans-serif;min-height:100vh}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:
+    radial-gradient(ellipse 60% 40% at 20% 0%,rgba(0,224,255,.05),transparent),
+    radial-gradient(ellipse 40% 30% at 80% 100%,rgba(92,53,255,.04),transparent),
+    linear-gradient(rgba(0,224,255,.018) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(0,224,255,.018) 1px,transparent 1px);
+  background-size:auto,auto,44px 44px,44px 44px}
+
+/* ── HEADER ── */
+header{position:relative;z-index:2;padding:20px 40px;
+  border-bottom:1px solid var(--border);
+  background:linear-gradient(180deg,rgba(0,224,255,.04),transparent);
+  display:flex;align-items:center;justify-content:space-between}
+.brand{display:flex;align-items:center;gap:14px}
+.brand-logo{width:46px;height:46px;border-radius:12px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  display:flex;align-items:center;justify-content:center;font-size:24px;
+  box-shadow:0 0 24px rgba(0,224,255,.25)}
+.brand h1{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;letter-spacing:-.4px}
+.brand h1 em{color:var(--accent);font-style:normal}
+.brand p{font-size:10px;color:var(--muted);margin-top:3px;letter-spacing:.8px}
+.header-right{display:flex;align-items:center;gap:16px}
+#ts{font-size:11px;color:var(--muted)}
+.refresh-btn{background:rgba(0,224,255,.07);border:1px solid rgba(0,224,255,.3);
+  color:var(--accent);padding:8px 18px;border-radius:7px;cursor:pointer;
+  font-size:12px;font-family:'JetBrains Mono',monospace;transition:all .2s;letter-spacing:.3px}
+.refresh-btn:hover{background:rgba(0,224,255,.15);box-shadow:0 0 18px rgba(0,224,255,.15)}
+.refresh-btn.loading{opacity:.5;pointer-events:none}
+
+/* ── STATS BAR ── */
+.stats{position:relative;z-index:1;display:grid;grid-template-columns:repeat(4,1fr);
+  gap:1px;background:var(--border);border-bottom:1px solid var(--border)}
+.stat{background:var(--surface);padding:16px 28px;display:flex;align-items:center;gap:14px}
+.stat-pip{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.stat-label{font-size:9px;letter-spacing:1.5px;color:var(--muted);margin-bottom:4px;display:block}
+.stat-val{font-size:26px;font-weight:700;font-family:'Syne',sans-serif;line-height:1}
+
+/* ── MAIN ── */
+main{position:relative;z-index:1;padding:32px 40px;
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:18px}
+
+/* ── BUILDING CARD ── */
+.bcard{background:var(--card);border:1px solid var(--border);border-radius:12px;
+  overflow:hidden;animation:up .4s ease both;transition:all .25s}
+.bcard:hover{border-color:var(--border2);box-shadow:0 8px 40px rgba(0,0,0,.4),0 0 0 1px rgba(0,224,255,.05)}
+.bcard-top{padding:18px 20px 14px;border-bottom:1px solid var(--border);
+  background:linear-gradient(135deg,rgba(0,224,255,.03),transparent)}
+.bcard-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px}
+.building-name{font-family:'Syne',sans-serif;font-size:17px;font-weight:700;
+  display:flex;align-items:center;gap:8px}
+.building-name .icon{font-size:18px}
+.online-badge,.offline-badge{display:inline-flex;align-items:center;gap:5px;
+  padding:4px 12px;border-radius:20px;font-size:10px;font-weight:700;letter-spacing:.8px;
+  font-family:'JetBrains Mono',monospace}
+.online-badge {background:rgba(0,217,126,.1);color:var(--green);border:1px solid rgba(0,217,126,.25)}
+.offline-badge{background:rgba(255,61,90,.1); color:var(--red);  border:1px solid rgba(255,61,90,.2)}
+.badge-dot{width:5px;height:5px;border-radius:50%;background:currentColor}
+.online-badge .badge-dot{animation:blink 2s infinite}
+
+/* IP chips */
+.ip-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+.ip-chip{display:flex;align-items:center;gap:8px;
+  background:rgba(0,224,255,.06);border:1px solid rgba(0,224,255,.15);
+  border-radius:8px;padding:8px 14px}
+.ip-chip .wan-label{font-size:9px;letter-spacing:1px;color:var(--muted);display:block;margin-bottom:3px}
+.ip-chip .ip-val{font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:600;color:var(--accent)}
+.ip-chip.wan2{background:rgba(92,53,255,.06);border-color:rgba(92,53,255,.2)}
+.ip-chip.wan2 .ip-val{color:#a08bff}
+
+/* detail row */
+.bcard-footer{padding:10px 20px;display:flex;align-items:center;justify-content:space-between}
+.updated-time{font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace}
+.adapter-list{font-size:10px;color:var(--muted2)}
+
+/* ── EMPTY / ERROR ── */
+.center-msg{grid-column:1/-1;text-align:center;padding:80px 20px;color:var(--muted)}
+.center-msg .icon{font-size:52px;margin-bottom:16px}
+.center-msg h2{font-family:'Syne',sans-serif;font-size:20px;color:var(--text);margin-bottom:10px}
+.center-msg p{font-size:13px;line-height:2}
+code{background:rgba(0,224,255,.08);color:var(--accent);padding:2px 8px;border-radius:4px;font-size:12px}
+
+/* config panel */
+.config-panel{position:relative;z-index:2;
+  background:rgba(255,179,0,.04);border:1px solid rgba(255,179,0,.2);
+  border-radius:10px;margin:20px 40px 0;padding:16px 20px;display:none}
+.config-panel.show{display:block}
+.config-panel h3{color:var(--yellow);font-size:13px;margin-bottom:10px}
+.config-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.config-row input{background:var(--card);border:1px solid var(--border2);color:var(--text);
+  padding:8px 12px;border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:12px;
+  flex:1;min-width:200px}
+.config-row input:focus{outline:none;border-color:var(--accent)}
+.save-btn{background:rgba(0,224,255,.1);border:1px solid var(--accent);color:var(--accent);
+  padding:8px 16px;border-radius:6px;cursor:pointer;font-size:12px;white-space:nowrap;
+  font-family:'JetBrains Mono',monospace;transition:all .2s}
+.save-btn:hover{background:rgba(0,224,255,.2)}
+
+@keyframes up{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="brand-logo">&#127758;</div>
+    <div>
+      <h1>IP <em>Monitor</em> Dashboard</h1>
+      <p>BUILDING PUBLIC IP TRACKER &nbsp;&#8212;&nbsp; REAL TIME</p>
+    </div>
+  </div>
+  <div class="header-right">
+    <span id="ts">-</span>
+    <button class="refresh-btn" id="refresh-btn" onclick="loadData()">&#8635; Refresh</button>
+  </div>
+</header>
+
+<!-- Config panel (shown if no credentials saved) -->
+<div class="config-panel" id="config-panel">
+  <h3>&#9881; ตั้งค่า JSONBin Credentials (ครั้งแรกเท่านั้น)</h3>
+  <div class="config-row">
+    <input id="inp-key" placeholder="X-Master-Key (Secret Key จาก jsonbin.io)" type="password">
+    <input id="inp-bin" placeholder="BIN ID">
+    <button class="save-btn" onclick="saveConfig()">&#10003; บันทึก &amp; โหลดข้อมูล</button>
+  </div>
+</div>
+
+<!-- Stats -->
+<div class="stats">
+  <div class="stat"><div class="stat-pip" style="background:var(--text)"></div>
+    <div><span class="stat-label">TOTAL BUILDINGS</span><span class="stat-val" id="s-total" style="color:var(--text)">-</span></div></div>
+  <div class="stat"><div class="stat-pip" style="background:var(--green)"></div>
+    <div><span class="stat-label">ONLINE</span><span class="stat-val" id="s-online" style="color:var(--green)">-</span></div></div>
+  <div class="stat"><div class="stat-pip" style="background:var(--red)"></div>
+    <div><span class="stat-label">OFFLINE</span><span class="stat-val" id="s-offline" style="color:var(--red)">-</span></div></div>
+  <div class="stat"><div class="stat-pip" style="background:var(--accent)"></div>
+    <div><span class="stat-label">TOTAL PUBLIC IPs</span><span class="stat-val" id="s-ips" style="color:var(--accent)">-</span></div></div>
+</div>
+
+<main id="main">
+  <div class="center-msg">
+    <div class="icon">&#128752;</div>
+    <h2>กำลังโหลดข้อมูล...</h2>
+  </div>
+</main>
+
+<script>
+const LS_KEY = 'ip_dashboard_config';
+const AUTO_REFRESH_SEC = 60;
+
+function getConfig() {
+  try { return JSON.parse(localStorage.getItem(LS_KEY) || '{}'); } catch { return {}; }
+}
+function saveConfig() {
+  const key = document.getElementById('inp-key').value.trim();
+  const bin = document.getElementById('inp-bin').value.trim();
+  if (!key || !bin) { alert('กรุณากรอกทั้ง Secret Key และ BIN ID'); return; }
+  localStorage.setItem(LS_KEY, JSON.stringify({ key, bin }));
+  document.getElementById('config-panel').classList.remove('show');
+  loadData();
+}
+
+function buildCard(b, idx) {
+  const chips = (b.public_ips || []).map((ip, i) => `
+    <div class="ip-chip ${i > 0 ? 'wan'+(i+1) : ''}">
+      <div>
+        <span class="wan-label">WAN ${i+1}</span>
+        <span class="ip-val">${ip}</span>
+      </div>
+    </div>`).join('');
+
+  const noIP = !b.public_ips || b.public_ips.length === 0;
+  const badge = b.online
+    ? `<span class="online-badge"><span class="badge-dot"></span>ONLINE</span>`
+    : `<span class="offline-badge"><span class="badge-dot"></span>OFFLINE</span>`;
+
+  const updated = b.updated_at
+    ? new Date(b.updated_at).toLocaleString('th-TH', {hour12:false})
+    : '-';
+
+  return `
+  <div class="bcard" style="animation-delay:${idx * 0.06}s">
+    <div class="bcard-top">
+      <div class="bcard-header">
+        <div class="building-name"><span class="icon">&#127970;</span>${b.name}</div>
+        ${badge}
+      </div>
+      <div class="ip-chips">
+        ${noIP
+          ? `<span style="font-size:12px;color:var(--muted)">ไม่พบ Public IP</span>`
+          : chips}
+      </div>
+    </div>
+    <div class="bcard-footer">
+      <span class="updated-time">&#128336; ${updated}</span>
+      <span class="adapter-list">${(b.interfaces||[]).map(i=>i.adapter).join(', ')}</span>
+    </div>
+  </div>`;
+}
+
+async function loadData() {
+  const cfg = getConfig();
+  if (!cfg.key || !cfg.bin) {
+    document.getElementById('config-panel').classList.add('show');
+    document.getElementById('main').innerHTML = `
+      <div class="center-msg">
+        <div class="icon">&#128274;</div>
+        <h2>ยังไม่ได้ตั้งค่า</h2>
+        <p>กรอก <strong style="color:var(--yellow)">Secret Key</strong> และ <strong style="color:var(--yellow)">BIN ID</strong> จาก jsonbin.io ด้านบน</p>
+      </div>`;
+    return;
+  }
+
+  const btn = document.getElementById('refresh-btn');
+  btn.classList.add('loading');
+  btn.textContent = '⟳ Loading...';
+
+  try {
+    const res = await fetch(`https://api.jsonbin.io/v3/b/${cfg.bin}/latest`, {
+      headers: { 'X-Master-Key': cfg.key }
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json();
+    const data = json.record || {};
+    const buildings = Object.values(data.buildings || {});
+
+    // Stats
+    const online  = buildings.filter(b => b.online).length;
+    const offline = buildings.length - online;
+    const totalIPs = buildings.reduce((a, b) => a + (b.public_ips||[]).length, 0);
+    document.getElementById('s-total').textContent  = buildings.length;
+    document.getElementById('s-online').textContent = online;
+    document.getElementById('s-offline').textContent = offline;
+    document.getElementById('s-ips').textContent    = totalIPs;
+    document.getElementById('ts').textContent = 'Updated: ' + new Date().toLocaleTimeString('th-TH');
+
+    if (!buildings.length) {
+      document.getElementById('main').innerHTML = `
+        <div class="center-msg">
+          <div class="icon">&#128235;</div>
+          <h2>ยังไม่มีข้อมูล</h2>
+          <p>รัน <code>reporter.py</code> บน Windows แต่ละอาคารก่อน</p>
+        </div>`;
+    } else {
+      // Sort: online first, then by name
+      buildings.sort((a, b) => (b.online - a.online) || a.name.localeCompare(b.name));
+      document.getElementById('main').innerHTML = buildings.map((b, i) => buildCard(b, i)).join('');
+    }
+
+  } catch(e) {
+    document.getElementById('main').innerHTML = `
+      <div class="center-msg">
+        <div class="icon">&#10060;</div>
+        <h2>โหลดข้อมูลไม่สำเร็จ</h2>
+        <p>${e.message}<br>ตรวจสอบ Secret Key และ BIN ID อีกครั้ง</p>
+      </div>`;
+  }
+
+  btn.classList.remove('loading');
+  btn.textContent = '⟳ Refresh';
+}
+
+// Auto refresh
+let countdown = AUTO_REFRESH_SEC;
+setInterval(() => {
+  countdown--;
+  if (countdown <= 0) { loadData(); countdown = AUTO_REFRESH_SEC; }
+}, 1000);
+
+loadData();
+</script>
+</body>
+</html>
