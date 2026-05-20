@@ -216,6 +216,16 @@ code{background:rgba(0,224,255,.08);color:var(--accent);padding:2px 8px;border-r
 </main>
 
 <script>
+
+function isStale(updated_at, minutes) {
+  if (!updated_at) return true;
+  minutes = minutes || 10;
+  try {
+    var diff = (Date.now() - new Date(updated_at).getTime()) / 60000;
+    return diff > minutes;
+  } catch(e) { return true; }
+}
+
 const LS_KEY = 'ip_dashboard_config';
 const AUTO_REFRESH_SEC = 60;
 
