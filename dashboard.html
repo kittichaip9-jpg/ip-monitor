@@ -342,6 +342,10 @@ async function loadData() {
     const json = await res.json();
     const data = json.record || {};
     const buildings = Object.values(data.buildings || {});
+  // Override online status based on last update time (>10 min = offline)
+  buildings.forEach(b => {
+    if (isStale(b.updated_at, 10)) b.online = false;
+  });
 
     // Stats
     const online  = buildings.filter(b => b.online).length;
