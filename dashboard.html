@@ -89,6 +89,28 @@ main{position:relative;z-index:1;padding:32px 40px;
 .updated-time{font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace}
 .adapter-list{font-size:10px;color:var(--muted2)}
 
+/* -- SEARCH BAR -- */
+.search-bar{position:relative;z-index:1;padding:16px 40px;
+  border-bottom:1px solid var(--border);background:var(--surface);
+  display:flex;align-items:center;gap:12px}
+.search-wrap{position:relative;flex:1;max-width:420px}
+.search-wrap input{width:100%;background:var(--card);border:1px solid var(--border2);
+  color:var(--text);padding:9px 14px 9px 38px;border-radius:8px;
+  font-family:'JetBrains Mono',monospace;font-size:13px;outline:none;transition:all .2s}
+.search-wrap input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,224,255,.08)}
+.search-wrap input::placeholder{color:var(--muted)}
+.search-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);
+  color:var(--muted);font-size:14px;pointer-events:none}
+.filter-btns{display:flex;gap:6px}
+.filter-btn{padding:7px 14px;border-radius:6px;font-size:11px;font-weight:600;
+  letter-spacing:.5px;cursor:pointer;border:1px solid var(--border2);
+  background:transparent;color:var(--muted);font-family:'JetBrains Mono',monospace;transition:all .2s}
+.filter-btn:hover{border-color:var(--accent);color:var(--accent)}
+.filter-btn.active{background:rgba(0,224,255,.1);border-color:var(--accent);color:var(--accent)}
+.filter-btn.on.active{background:rgba(0,217,126,.1);border-color:var(--green);color:var(--green)}
+.filter-btn.off.active{background:rgba(255,61,90,.1);border-color:var(--red);color:var(--red)}
+.search-count{font-size:11px;color:var(--muted);margin-left:auto;font-family:'JetBrains Mono',monospace}
+
 /* ── EMPTY / ERROR ── */
 .center-msg{grid-column:1/-1;text-align:center;padding:80px 20px;color:var(--muted)}
 .center-msg .icon{font-size:52px;margin-bottom:16px}
@@ -155,6 +177,19 @@ code{background:rgba(0,224,255,.08);color:var(--accent);padding:2px 8px;border-r
     <div><span class="stat-label">TOTAL PUBLIC IPs</span><span class="stat-val" id="s-ips" style="color:var(--accent)">-</span></div></div>
 </div>
 
+
+<div class="search-bar" id="search-bar" style="display:none">
+  <div class="search-wrap">
+    <span class="search-icon">&#128269;</span>
+    <input type="text" id="search-input" placeholder="Search building name or IP address..." oninput="filterCards()">
+  </div>
+  <div class="filter-btns">
+    <button class="filter-btn active" id="f-all"   onclick="setFilter('all')">ALL</button>
+    <button class="filter-btn on"     id="f-online" onclick="setFilter('online')">ONLINE</button>
+    <button class="filter-btn off"    id="f-offline" onclick="setFilter('offline')">OFFLINE</button>
+  </div>
+  <span class="search-count" id="search-count"></span>
+</div>
 <main id="main">
   <div class="center-msg">
     <div class="icon">&#128752;</div>
@@ -216,6 +251,36 @@ function buildCard(b, idx) {
   </div>`;
 }
 
+
+// ── Search & Filter ──────────────────────────
+let allBuildings = [];
+let currentFilter = 'all';
+
+function setFilter(f) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('f-' + (f==='all'?'all':f==='online'?'online':'offline')).classList.add('active');
+  filterCards();
+}
+
+function filterCards() {
+  const q = (document.getElementById('search-input').value || '').toLowerCase().trim();
+  const filtered = allBuildings.filter(b => {
+    const matchFilter = currentFilter === 'all' || (currentFilter === 'online' ? b.online : !b.online);
+    const matchSearch = !q ||
+      b.name.toLowerCase().includes(q) ||
+      (b.public_ips || []).some(ip => ip.includes(q));
+    return matchFilter && matchSearch;
+  });
+  const main = document.getElementById('main');
+  if (!filtered.length) {
+    main.innerHTML = '<div class="center-msg" style="grid-column:1/-1"><div class="icon">&#128270;</div><h2>No results found</h2><p>Try different keyword</p></div>';
+  } else {
+    main.innerHTML = filtered.map((b, i) => buildCard(b, i)).join('');
+  }
+  document.getElementById('search-count').textContent = filtered.length + ' / ' + allBuildings.length + ' buildings';
+}
+
 async function loadData() {
   const cfg = getConfig();
   if (!cfg.key || !cfg.bin) {
@@ -262,7 +327,10 @@ async function loadData() {
     } else {
       // Sort: online first, then by name
       buildings.sort((a, b) => (b.online - a.online) || a.name.localeCompare(b.name));
-      document.getElementById('main').innerHTML = buildings.map((b, i) => buildCard(b, i)).join('');
+      allBuildings = buildings;
+      document.getElementById('search-bar').style.display = 'flex';
+      document.getElementById('search-count').textContent = buildings.length + ' / ' + buildings.length + ' buildings';
+      filterCards();
     }
 
   } catch(e) {
