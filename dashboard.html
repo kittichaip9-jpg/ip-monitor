@@ -169,6 +169,31 @@ code{background:rgba(0,224,255,.08);color:var(--accent);padding:2px 8px;border-r
 .port-btn.p443:hover{background:rgba(0,217,126,.18);border-color:var(--green)}
 .port-btn.p81{border-color:rgba(160,139,255,.2);background:rgba(160,139,255,.06);color:#a08bff}
 .port-btn.p81:hover{background:rgba(160,139,255,.18);border-color:#a08bff}
+.port-btn.p8006{border-color:rgba(251,146,60,.2);background:rgba(251,146,60,.06);color:#fb923c}
+.port-btn.p8006:hover{background:rgba(251,146,60,.18);border-color:#fb923c}
+
+
+/* -- CONFIG PANEL -- */
+.config-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;
+  display:flex;align-items:center;justify-content:center}
+.config-box{background:#0f1628;border:1px solid #1e2d4a;border-radius:12px;
+  padding:32px;width:480px;max-width:90vw}
+.config-box h3{font-family:'Syne',sans-serif;font-size:18px;color:#d8e6f5;margin-bottom:6px}
+.config-box p{font-size:12px;color:#4a6080;margin-bottom:20px}
+.config-field{margin-bottom:14px}
+.config-field label{display:block;font-size:11px;letter-spacing:.8px;color:#4a6080;margin-bottom:6px}
+.config-field input{width:100%;background:#07090f;border:1px solid #1e2d4a;color:#d8e6f5;
+  padding:10px 14px;border-radius:7px;font-family:'JetBrains Mono',monospace;font-size:13px;outline:none}
+.config-field input:focus{border-color:#00e0ff}
+.config-actions{display:flex;gap:10px;margin-top:20px}
+.config-save{flex:1;background:rgba(0,224,255,.1);border:1px solid #00e0ff;color:#00e0ff;
+  padding:10px;border-radius:7px;font-family:'JetBrains Mono',monospace;font-size:13px;
+  cursor:pointer;transition:all .2s}
+.config-save:hover{background:rgba(0,224,255,.2)}
+.logout-btn{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:#ef4444;
+  padding:8px 14px;border-radius:7px;font-size:11px;cursor:pointer;transition:all .2s;
+  font-family:'JetBrains Mono',monospace}
+.logout-btn:hover{background:rgba(239,68,68,.2)}
 
 @keyframes up{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
@@ -244,14 +269,21 @@ function isStale(updated_at, minutes) {
 const LS_KEY = 'ip_dashboard_config';
 const AUTO_REFRESH_SEC = 60;
 
-// Credentials hardcoded - no login needed
 function getConfig() {
-  return {
-    key: '$2a$10$KLSO6N6d9XCaijHhMKx9uuSQDv32l7Pdd6AZNw8BwN1boIB32xGTK',
-    bin: '6a0c4d726610dd3ae86d2d83'
-  };
+  try { return JSON.parse(localStorage.getItem('ip_cfg') || '{}'); } catch { return {}; }
 }
-function saveConfig() { loadData(); }
+function saveConfig() {
+  var key = document.getElementById('inp-key').value.trim();
+  var bin = document.getElementById('inp-bin').value.trim();
+  if (!key || !bin) { alert('Please enter both Secret Key and BIN ID'); return; }
+  localStorage.setItem('ip_cfg', JSON.stringify({key:key, bin:bin}));
+  document.getElementById('config-panel').style.display = 'none';
+  loadData();
+}
+function clearConfig() {
+  localStorage.removeItem('ip_cfg');
+  location.reload();
+}
 
 function buildCard(b, idx) {
   const chips = (b.public_ips || []).map((ip, i) => `
@@ -263,6 +295,7 @@ function buildCard(b, idx) {
           <a class="port-btn"      href="https://${ip}:9443" target="_blank" title="Open port 9443">🔗 9443</a>
           <a class="port-btn p443" href="https://${ip}:443"  target="_blank" title="Open port 443" >🔒 443</a>
           <a class="port-btn p81"  href="http://${ip}:81"    target="_blank" title="Open port 81"  >🌐 81</a>
+          <a class="port-btn p8006" href="https://${ip}:8006" target="_blank" title="Open port 8006">⚡ 8006</a>
         </div>
       </div>
     </div>`).join('');
@@ -359,6 +392,10 @@ function filterCards() {
 
 async function loadData() {
   const cfg = getConfig();
+  if (!cfg.key || !cfg.bin) {
+    document.getElementById('config-panel').style.display = 'flex';
+    return;
+  }
 
   const btn = document.getElementById('refresh-btn');
   btn.classList.add('loading');
