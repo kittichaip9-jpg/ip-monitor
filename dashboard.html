@@ -248,6 +248,24 @@ code{background:rgba(0,224,255,.08);color:var(--accent);padding:2px 8px;border-r
     <button class="view-btn"        id="vbtn-table" onclick="setView('table')" title="Table View">&#128203;</button>
   </div>
 </div>
+<div class="config-overlay" id="config-panel" style="display:none">
+  <div class="config-box">
+    <h3>&#128274; IP Monitor Login</h3>
+    <p>Enter your JSONBin.io credentials to access the dashboard</p>
+    <div class="config-field">
+      <label>X-MASTER-KEY (Secret Key)</label>
+      <input type="password" id="inp-key" placeholder="$2a$10$...">
+    </div>
+    <div class="config-field">
+      <label>BIN ID</label>
+      <input type="text" id="inp-bin" placeholder="6a0c...">
+    </div>
+    <div class="config-actions">
+      <button class="config-save" onclick="saveConfig()">&#10003; Login &amp; View Dashboard</button>
+    </div>
+  </div>
+</div>
+
 <main id="main">
   <div class="center-msg">
     <div class="icon">&#128752;</div>
