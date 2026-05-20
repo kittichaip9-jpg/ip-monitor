@@ -118,21 +118,42 @@ main{position:relative;z-index:1;padding:32px 40px;
 .center-msg p{font-size:13px;line-height:2}
 code{background:rgba(0,224,255,.08);color:var(--accent);padding:2px 8px;border-radius:4px;font-size:12px}
 
-/* config panel */
-.config-panel{position:relative;z-index:2;
-  background:rgba(255,179,0,.04);border:1px solid rgba(255,179,0,.2);
-  border-radius:10px;margin:20px 40px 0;padding:16px 20px;display:none}
-.config-panel.show{display:block}
-.config-panel h3{color:var(--yellow);font-size:13px;margin-bottom:10px}
-.config-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-.config-row input{background:var(--card);border:1px solid var(--border2);color:var(--text);
-  padding:8px 12px;border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:12px;
-  flex:1;min-width:200px}
-.config-row input:focus{outline:none;border-color:var(--accent)}
-.save-btn{background:rgba(0,224,255,.1);border:1px solid var(--accent);color:var(--accent);
-  padding:8px 16px;border-radius:6px;cursor:pointer;font-size:12px;white-space:nowrap;
-  font-family:'JetBrains Mono',monospace;transition:all .2s}
-.save-btn:hover{background:rgba(0,224,255,.2)}
+/* config panel removed - credentials hardcoded */
+
+
+/* -- LIST VIEW -- */
+.view-toggle{display:flex;gap:4px;background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:3px}
+.view-btn{width:32px;height:32px;border:none;background:transparent;color:var(--muted);
+  border-radius:5px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  font-size:15px;transition:all .2s}
+.view-btn.active{background:rgba(0,224,255,.12);color:var(--accent)}
+.view-btn:hover:not(.active){background:rgba(255,255,255,.05);color:var(--text)}
+
+/* list mode overrides main grid */
+#main.list-mode{grid-template-columns:1fr;gap:8px;padding:20px 40px}
+.list-mode .bcard{border-radius:8px}
+.list-mode .bcard-top{padding:12px 18px 10px}
+.list-mode .bcard-header{margin-bottom:6px}
+.list-mode .building-name{font-size:14px}
+.list-mode .ip-chips{gap:6px}
+.list-mode .ip-chip{padding:5px 10px}
+.list-mode .ip-chip .ip-val{font-size:13px}
+.list-mode .bcard-footer{padding:7px 18px}
+
+/* table mode */
+#main.table-mode{display:block;padding:20px 40px}
+.tbl-wrap{background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.data-table{width:100%;border-collapse:collapse;font-size:13px}
+.data-table th{padding:11px 18px;text-align:left;font-size:10px;letter-spacing:1.2px;
+  text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);
+  background:var(--surface);font-family:'JetBrains Mono',monospace}
+.data-table td{padding:12px 18px;border-bottom:1px solid rgba(24,32,48,.8);vertical-align:middle}
+.data-table tr:last-child td{border-bottom:none}
+.data-table tr:hover td{background:rgba(0,224,255,.025)}
+.td-name{font-family:'Syne',sans-serif;font-weight:700;font-size:14px}
+.td-ip{font-family:'JetBrains Mono',monospace;color:var(--accent);font-weight:600;letter-spacing:.5px}
+.td-ip.wan2{color:#a08bff}
+.td-time{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted)}
 
 @keyframes up{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
@@ -155,14 +176,6 @@ code{background:rgba(0,224,255,.08);color:var(--accent);padding:2px 8px;border-r
   </div>
 </header>
 
-<!-- Config panel (shown if no credentials saved) -->
-<div class="config-panel" id="config-panel">
-  <h3>&#9881; ตั้งค่า JSONBin Credentials (ครั้งแรกเท่านั้น)</h3>
-  <div class="config-row">
-    <input id="inp-key" placeholder="X-Master-Key (Secret Key จาก jsonbin.io)" type="password">
-    <input id="inp-bin" placeholder="BIN ID">
-    <button class="save-btn" onclick="saveConfig()">&#10003; บันทึก &amp; โหลดข้อมูล</button>
-  </div>
 </div>
 
 <!-- Stats -->
@@ -189,6 +202,11 @@ code{background:rgba(0,224,255,.08);color:var(--accent);padding:2px 8px;border-r
     <button class="filter-btn off"    id="f-offline" onclick="setFilter('offline')">OFFLINE</button>
   </div>
   <span class="search-count" id="search-count"></span>
+  <div class="view-toggle">
+    <button class="view-btn active" id="vbtn-grid"  onclick="setView('grid')"  title="Grid View">&#128471;</button>
+    <button class="view-btn"        id="vbtn-list"  onclick="setView('list')"  title="List View">&#9776;</button>
+    <button class="view-btn"        id="vbtn-table" onclick="setView('table')" title="Table View">&#128203;</button>
+  </div>
 </div>
 <main id="main">
   <div class="center-msg">
@@ -201,17 +219,14 @@ code{background:rgba(0,224,255,.08);color:var(--accent);padding:2px 8px;border-r
 const LS_KEY = 'ip_dashboard_config';
 const AUTO_REFRESH_SEC = 60;
 
+// Credentials hardcoded - no login needed
 function getConfig() {
-  try { return JSON.parse(localStorage.getItem(LS_KEY) || '{}'); } catch { return {}; }
+  return {
+    key: '$2a$10$KLSO6N6d9XCaijHhMKx9uuSQDv32l7Pdd6AZNw8BwN1boIB32xGTK',
+    bin: '6a0c4d726610dd3ae86d2d83'
+  };
 }
-function saveConfig() {
-  const key = document.getElementById('inp-key').value.trim();
-  const bin = document.getElementById('inp-bin').value.trim();
-  if (!key || !bin) { alert('กรุณากรอกทั้ง Secret Key และ BIN ID'); return; }
-  localStorage.setItem(LS_KEY, JSON.stringify({ key, bin }));
-  document.getElementById('config-panel').classList.remove('show');
-  loadData();
-}
+function saveConfig() { loadData(); }
 
 function buildCard(b, idx) {
   const chips = (b.public_ips || []).map((ip, i) => `
@@ -252,6 +267,35 @@ function buildCard(b, idx) {
 }
 
 
+
+// -- View Toggle --
+let currentView = 'grid';
+
+function setView(v) {
+  currentView = v;
+  ['grid','list','table'].forEach(x => {
+    document.getElementById('vbtn-'+x).classList.toggle('active', x===v);
+  });
+  const main = document.getElementById('main');
+  main.className = v === 'grid' ? '' : (v === 'list' ? 'list-mode' : 'table-mode');
+  filterCards();
+}
+
+function buildTableView(buildings) {
+  if (!buildings.length) return '<div class="center-msg" style="padding:60px"><div class="icon">&#128270;</div><h2>No results</h2></div>';
+  const rows = buildings.map(b => {
+    const badge = b.online
+      ? '<span class="online-badge"><span class="badge-dot"></span>ONLINE</span>'
+      : '<span class="offline-badge"><span class="badge-dot"></span>OFFLINE</span>';
+    const ips = (b.public_ips||[]).map((ip,i) =>
+      '<span class="td-ip'+(i>0?' wan2':'')+'" style="display:block">'+ip+'</span>'
+    ).join('') || '<span style="color:var(--muted);font-size:12px">N/A</span>';
+    const updated = b.updated_at ? new Date(b.updated_at).toLocaleString('th-TH',{hour12:false}) : '-';
+    return '<tr><td><span class="td-name">&#127970; '+b.name+'</span></td><td>'+ips+'</td><td>'+badge+'</td><td class="td-time">'+updated+'</td></tr>';
+  }).join('');
+  return '<div class="tbl-wrap"><table class="data-table"><thead><tr><th>Building</th><th>Public IP</th><th>Status</th><th>Last Update</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+}
+
 // ── Search & Filter ──────────────────────────
 let allBuildings = [];
 let currentFilter = 'all';
@@ -273,7 +317,9 @@ function filterCards() {
     return matchFilter && matchSearch;
   });
   const main = document.getElementById('main');
-  if (!filtered.length) {
+  if (currentView === 'table') {
+    main.innerHTML = buildTableView(filtered);
+  } else if (!filtered.length) {
     main.innerHTML = '<div class="center-msg" style="grid-column:1/-1"><div class="icon">&#128270;</div><h2>No results found</h2><p>Try different keyword</p></div>';
   } else {
     main.innerHTML = filtered.map((b, i) => buildCard(b, i)).join('');
@@ -283,16 +329,6 @@ function filterCards() {
 
 async function loadData() {
   const cfg = getConfig();
-  if (!cfg.key || !cfg.bin) {
-    document.getElementById('config-panel').classList.add('show');
-    document.getElementById('main').innerHTML = `
-      <div class="center-msg">
-        <div class="icon">&#128274;</div>
-        <h2>ยังไม่ได้ตั้งค่า</h2>
-        <p>กรอก <strong style="color:var(--yellow)">Secret Key</strong> และ <strong style="color:var(--yellow)">BIN ID</strong> จาก jsonbin.io ด้านบน</p>
-      </div>`;
-    return;
-  }
 
   const btn = document.getElementById('refresh-btn');
   btn.classList.add('loading');
