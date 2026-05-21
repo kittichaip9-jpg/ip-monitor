@@ -173,7 +173,43 @@ code{background:rgba(0,224,255,.08);color:var(--accent);padding:2px 8px;border-r
 .port-btn.p8006:hover{background:rgba(251,146,60,.18);border-color:#fb923c}
 
 
-/* -- CONFIG PANEL -- */
+/* -- DELETE BUTTON -- */
+.delete-btn{position:absolute;top:12px;right:12px;width:28px;height:28px;border-radius:6px;
+  border:1px solid rgba(255,61,90,.25);background:rgba(255,61,90,.07);color:var(--red);
+  cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;
+  transition:all .2s;opacity:0;pointer-events:none;z-index:5}
+.bcard{position:relative}
+.bcard:hover .delete-btn{opacity:1;pointer-events:auto}
+.delete-btn:hover{background:rgba(255,61,90,.2);border-color:var(--red);
+  box-shadow:0 0 10px rgba(255,61,90,.2);transform:scale(1.1)}
+
+/* -- CONFIRM MODAL -- */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;
+  display:flex;align-items:center;justify-content:center;animation:fadeIn .15s ease}
+.modal-box{background:#0f1628;border:1px solid rgba(255,61,90,.3);border-radius:14px;
+  padding:28px 32px;width:380px;max-width:90vw;box-shadow:0 20px 60px rgba(0,0,0,.6),
+  0 0 0 1px rgba(255,61,90,.1)}
+.modal-icon{font-size:36px;text-align:center;margin-bottom:12px}
+.modal-title{font-family:'Syne',sans-serif;font-size:17px;font-weight:700;
+  color:var(--text);text-align:center;margin-bottom:6px}
+.modal-sub{font-size:12px;color:var(--muted);text-align:center;margin-bottom:20px;line-height:1.7}
+.modal-sub strong{color:var(--red);font-family:'JetBrains Mono',monospace}
+.modal-actions{display:flex;gap:10px}
+.modal-cancel{flex:1;padding:10px;border-radius:8px;border:1px solid var(--border2);
+  background:transparent;color:var(--muted);font-family:'JetBrains Mono',monospace;
+  font-size:12px;cursor:pointer;transition:all .2s}
+.modal-cancel:hover{border-color:var(--text);color:var(--text)}
+.modal-confirm{flex:1;padding:10px;border-radius:8px;border:1px solid rgba(255,61,90,.4);
+  background:rgba(255,61,90,.12);color:var(--red);font-family:'JetBrains Mono',monospace;
+  font-size:12px;font-weight:700;cursor:pointer;transition:all .2s}
+.modal-confirm:hover{background:rgba(255,61,90,.25);border-color:var(--red)}
+.modal-confirm.loading{opacity:.5;pointer-events:none}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+
+.logout-btn{background:rgba(255,61,90,.07);border:1px solid rgba(255,61,90,.3);
+  color:var(--red);padding:8px 16px;border-radius:7px;cursor:pointer;
+  font-size:12px;font-family:'JetBrains Mono',monospace;transition:all .2s;letter-spacing:.3px}
+.logout-btn:hover{background:rgba(255,61,90,.18);box-shadow:0 0 14px rgba(255,61,90,.15)}
 .config-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;
   display:flex;align-items:center;justify-content:center}
 .config-box{background:#0f1628;border:1px solid #1e2d4a;border-radius:12px;
@@ -213,6 +249,7 @@ code{background:rgba(0,224,255,.08);color:var(--accent);padding:2px 8px;border-r
   <div class="header-right">
     <span id="ts">-</span>
     <button class="refresh-btn" id="refresh-btn" onclick="loadData()">&#8635; Refresh</button>
+    <button class="logout-btn" onclick="clearConfig()" title="ออกจากระบบ / เปลี่ยน Key">🔑 Logout</button>
   </div>
 </header>
 
@@ -312,7 +349,7 @@ function buildCard(b, idx) {
         <div class="port-btns">
           <a class="port-btn"      href="https://${ip}:9443" target="_blank" title="Open port 9443">🔗 9443</a>
           <a class="port-btn p443" href="https://${ip}:443"  target="_blank" title="Open port 443" >🔒 443</a>
-          <a class="port-btn p81"  href="http://${ip}:81/admin/smartzone.php"    target="_blank" title="Open port 81"  >🌐 Wan</a>
+          <a class="port-btn p81"  href="http://${ip}:81/admin/smartzone.php"    target="_blank" title="Open port 81"  >🌐 81</a>
           <a class="port-btn p8006" href="https://${ip}:8006" target="_blank" title="Open port 8006">⚡ 8006</a>
         </div>
       </div>
@@ -327,8 +364,10 @@ function buildCard(b, idx) {
     ? new Date(b.updated_at).toLocaleString('th-TH', {hour12:false})
     : '-';
 
+  const safeKey = encodeURIComponent(b._key || b.name);
   return `
   <div class="bcard" style="animation-delay:${idx * 0.06}s">
+    <button class="delete-btn" onclick="confirmDelete('${safeKey}','${b.name.replace(/'/g,"\\'")}',event)" title="ลบอาคารนี้">🗑️</button>
     <div class="bcard-top">
       <div class="bcard-header">
         <div class="building-name"><span class="icon">&#127970;</span>${b.name}</div>
@@ -380,6 +419,7 @@ function buildTableView(buildings) {
 // ── Search & Filter ──────────────────────────
 let allBuildings = [];
 let currentFilter = 'all';
+let rawRecord = {}; // เก็บ raw data จาก JSONBin สำหรับ delete
 
 function setFilter(f) {
   currentFilter = f;
@@ -408,6 +448,74 @@ function filterCards() {
   document.getElementById('search-count').textContent = filtered.length + ' / ' + allBuildings.length + ' buildings';
 }
 
+// ── Delete Building ──────────────────────────
+function confirmDelete(encodedKey, name, e) {
+  e.stopPropagation();
+  const key = decodeURIComponent(encodedKey);
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'delete-modal';
+  overlay.innerHTML = `
+    <div class="modal-box">
+      <div class="modal-icon">🗑️</div>
+      <div class="modal-title">ลบอาคารออกจากระบบ?</div>
+      <div class="modal-sub">คุณต้องการลบ <strong>${name}</strong><br>ออกจาก JSONBin อย่างถาวร การกระทำนี้ไม่สามารถย้อนกลับได้</div>
+      <div class="modal-actions">
+        <button class="modal-cancel" onclick="closeModal()">✕ ยกเลิก</button>
+        <button class="modal-confirm" id="modal-confirm-btn" onclick="deleteBuilding('${encodedKey}','${name.replace(/'/g,"\\'")}')">🗑️ ลบเลย</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener('click', function(ev){ if(ev.target===overlay) closeModal(); });
+}
+
+function closeModal() {
+  const m = document.getElementById('delete-modal');
+  if (m) m.remove();
+}
+
+async function deleteBuilding(encodedKey, name) {
+  const key = decodeURIComponent(encodedKey);
+  const cfg = getConfig();
+  const btn = document.getElementById('modal-confirm-btn');
+  btn.classList.add('loading');
+  btn.textContent = '⟳ กำลังลบ...';
+
+  try {
+    // ลบ building key ออกจาก rawRecord
+    const newRecord = JSON.parse(JSON.stringify(rawRecord));
+    delete newRecord.buildings[key];
+
+    const res = await fetch(`https://api.jsonbin.io/v3/b/${cfg.bin}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Master-Key': cfg.key
+      },
+      body: JSON.stringify(newRecord)
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    closeModal();
+    // อัปเดต local state ทันทีโดยไม่ต้อง reload
+    allBuildings = allBuildings.filter(b => (b._key || b.name) !== key);
+    rawRecord = newRecord;
+    filterCards();
+    // อัปเดต stats
+    const online  = allBuildings.filter(b => b.online).length;
+    document.getElementById('s-total').textContent   = allBuildings.length;
+    document.getElementById('s-online').textContent  = online;
+    document.getElementById('s-offline').textContent = allBuildings.length - online;
+    document.getElementById('s-ips').textContent     = allBuildings.reduce((a,b)=>a+(b.public_ips||[]).length,0);
+    document.getElementById('search-count').textContent = allBuildings.length+' / '+allBuildings.length+' buildings';
+
+  } catch(e) {
+    alert('ลบไม่สำเร็จ: ' + e.message);
+    btn.classList.remove('loading');
+    btn.textContent = '🗑️ ลบเลย';
+  }
+}
+
 async function loadData() {
   const cfg = getConfig();
   if (!cfg.key || !cfg.bin) {
@@ -426,7 +534,9 @@ async function loadData() {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const json = await res.json();
     const data = json.record || {};
-    const buildings = Object.values(data.buildings || {});
+    rawRecord = data;
+    const buildingsObj = data.buildings || {};
+    const buildings = Object.entries(buildingsObj).map(([k, v]) => ({...v, _key: k}));
   // Override online status based on last update time (>10 min = offline)
   buildings.forEach(b => {
     if (isStale(b.updated_at, 10)) b.online = false;
