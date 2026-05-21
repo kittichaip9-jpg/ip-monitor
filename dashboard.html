@@ -288,14 +288,25 @@ code{background:rgba(0,224,255,.08);color:var(--accent);padding:2px 8px;border-r
 <div class="config-overlay" id="config-panel" style="display:none">
   <div class="config-box">
     <h3>&#128274; IP Monitor Login</h3>
-    <p>Enter your JSONBin.io credentials to access the dashboard</p>
+    <p id="login-msg" style="color:#4a6080;margin-bottom:20px;font-size:12px">Enter your JSONBin.io credentials to access the dashboard</p>
+    <div id="login-error" style="display:none;background:rgba(255,61,90,.1);border:1px solid rgba(255,61,90,.3);
+      border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:12px;color:#ff3d5a;line-height:1.7"></div>
     <div class="config-field">
       <label>X-MASTER-KEY (Secret Key)</label>
-      <input type="password" id="inp-key" placeholder="$2a$10$...">
+      <div style="position:relative">
+        <input type="password" id="inp-key" placeholder="$2a$10$..." style="padding-right:44px">
+        <button onclick="toggleKey()" id="eye-btn" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);
+          background:none;border:none;color:#4a6080;cursor:pointer;font-size:16px;padding:4px">👁️</button>
+      </div>
     </div>
     <div class="config-field">
       <label>BIN ID</label>
       <input type="text" id="inp-bin" placeholder="6a0c...">
+    </div>
+    <div style="font-size:11px;color:#4a6080;margin-bottom:16px;line-height:1.8">
+      📌 หา Secret Key ได้ที่ <a href="https://jsonbin.io" target="_blank" style="color:#00e0ff">jsonbin.io</a>
+      → Login → Account → API Keys<br>
+      📌 BIN ID ดูได้จาก URL ของ Bin ที่ใช้งาน
     </div>
     <div class="config-actions">
       <button class="config-save" onclick="saveConfig()">&#10003; Login &amp; View Dashboard</button>
@@ -311,6 +322,21 @@ code{background:rgba(0,224,255,.08);color:var(--accent);padding:2px 8px;border-r
 </main>
 
 <script>
+
+function showLoginError(msg) {
+  const panel = document.getElementById('config-panel');
+  const errDiv = document.getElementById('login-error');
+  panel.style.display = 'flex';
+  errDiv.style.display = 'block';
+  errDiv.innerHTML = msg;
+  document.getElementById('inp-key').value = '';
+  document.getElementById('inp-bin').value = '';
+}
+
+function toggleKey() {
+  const inp = document.getElementById('inp-key');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
 
 function isStale(updated_at, minutes) {
   if (!updated_at) return true;
@@ -531,7 +557,16 @@ async function loadData() {
     const res = await fetch(`https://api.jsonbin.io/v3/b/${cfg.bin}/latest`, {
       headers: { 'X-Master-Key': cfg.key }
     });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    if (!res.ok) {
+      if (res.status === 403 || res.status === 401) {
+        localStorage.removeItem('ip_cfg');
+        showLoginError('🔑 Secret Key หรือ BIN ID ไม่ถูกต้อง (HTTP ' + res.status + ')<br>กรุณากรอกใหม่อีกครั้ง');
+        btn.classList.remove('loading');
+        btn.textContent = '⟳ Refresh';
+        return;
+      }
+      throw new Error(`HTTP ${res.status}`);
+    }
     const json = await res.json();
     const data = json.record || {};
     rawRecord = data;
