@@ -288,25 +288,25 @@ code{background:rgba(0,224,255,.08);color:var(--accent);padding:2px 8px;border-r
 <div class="config-overlay" id="config-panel" style="display:none">
   <div class="config-box">
     <h3>&#128274; IP Monitor Login</h3>
-    <p id="login-msg" style="color:#4a6080;margin-bottom:20px;font-size:12px">Enter your JSONBin.io credentials to access the dashboard</p>
+    <p id="login-msg" style="color:#4a6080;margin-bottom:20px;font-size:12px">ใส่ GitHub Token และ Gist ID เพื่อเข้าใช้งาน Dashboard</p>
     <div id="login-error" style="display:none;background:rgba(255,61,90,.1);border:1px solid rgba(255,61,90,.3);
       border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:12px;color:#ff3d5a;line-height:1.7"></div>
     <div class="config-field">
-      <label>X-MASTER-KEY (Secret Key)</label>
+      <label>GITHUB TOKEN (ghp_...)</label>
       <div style="position:relative">
-        <input type="password" id="inp-key" placeholder="$2a$10$..." style="padding-right:44px">
+        <input type="password" id="inp-key" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" style="padding-right:44px">
         <button onclick="toggleKey()" id="eye-btn" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);
           background:none;border:none;color:#4a6080;cursor:pointer;font-size:16px;padding:4px">👁️</button>
       </div>
     </div>
     <div class="config-field">
-      <label>BIN ID</label>
-      <input type="text" id="inp-bin" placeholder="6a0c...">
+      <label>GIST ID</label>
+      <input type="text" id="inp-bin" placeholder="abc123def456...">
     </div>
     <div style="font-size:11px;color:#4a6080;margin-bottom:16px;line-height:1.8">
-      📌 หา Secret Key ได้ที่ <a href="https://jsonbin.io" target="_blank" style="color:#00e0ff">jsonbin.io</a>
-      → Login → Account → API Keys<br>
-      📌 BIN ID ดูได้จาก URL ของ Bin ที่ใช้งาน
+      📌 GitHub Token: <a href="https://github.com/settings/tokens" target="_blank" style="color:#00e0ff">github.com/settings/tokens</a>
+      → Generate new token (classic) → ติ๊ก <b style="color:#d8e6f5">gist</b><br>
+      📌 Gist ID: ดูได้จาก URL ของ Gist เช่น gist.github.com/user/<b style="color:#d8e6f5">abc123def456</b>
     </div>
     <div class="config-actions">
       <button class="config-save" onclick="saveConfig()">&#10003; Login &amp; View Dashboard</button>
@@ -356,7 +356,7 @@ function getConfig() {
 function saveConfig() {
   var key = document.getElementById('inp-key').value.trim();
   var bin = document.getElementById('inp-bin').value.trim();
-  if (!key || !bin) { alert('Please enter both Secret Key and BIN ID'); return; }
+  if (!key || !bin) { alert('Please enter both GitHub Token and Gist ID'); return; }
   localStorage.setItem('ip_cfg', JSON.stringify({key:key, bin:bin}));
   document.getElementById('config-panel').style.display = 'none';
   loadData();
@@ -445,7 +445,7 @@ function buildTableView(buildings) {
 // ── Search & Filter ──────────────────────────
 let allBuildings = [];
 let currentFilter = 'all';
-let rawRecord = {}; // เก็บ raw data จาก JSONBin สำหรับ delete
+let rawRecord = {}; // เก็บ raw data จาก Gist สำหรับ delete
 
 function setFilter(f) {
   currentFilter = f;
@@ -485,7 +485,7 @@ function confirmDelete(encodedKey, name, e) {
     <div class="modal-box">
       <div class="modal-icon">🗑️</div>
       <div class="modal-title">ลบอาคารออกจากระบบ?</div>
-      <div class="modal-sub">คุณต้องการลบ <strong>${name}</strong><br>ออกจาก JSONBin อย่างถาวร การกระทำนี้ไม่สามารถย้อนกลับได้</div>
+      <div class="modal-sub">คุณต้องการลบ <strong>${name}</strong><br>ออกจาก Gist อย่างถาวร การกระทำนี้ไม่สามารถย้อนกลับได้</div>
       <div class="modal-actions">
         <button class="modal-cancel" onclick="closeModal()">✕ ยกเลิก</button>
         <button class="modal-confirm" id="modal-confirm-btn" onclick="deleteBuilding('${encodedKey}','${name.replace(/'/g,"\\'")}')">🗑️ ลบเลย</button>
@@ -512,13 +512,15 @@ async function deleteBuilding(encodedKey, name) {
     const newRecord = JSON.parse(JSON.stringify(rawRecord));
     delete newRecord.buildings[key];
 
-    const res = await fetch(`https://api.jsonbin.io/v3/b/${cfg.bin}`, {
-      method: 'PUT',
+    const gistContent = JSON.stringify(newRecord, null, 2);
+    const res = await fetch(`https://api.github.com/gists/${cfg.bin}`, {
+      method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
-        'X-Master-Key': cfg.key
+        'Authorization': 'token ' + cfg.key,
+        'Accept': 'application/vnd.github.v3+json'
       },
-      body: JSON.stringify(newRecord)
+      body: JSON.stringify({ files: { 'ip-monitor.json': { content: gistContent } } })
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
@@ -554,21 +556,25 @@ async function loadData() {
   btn.textContent = '⟳ Loading...';
 
   try {
-    const res = await fetch(`https://api.jsonbin.io/v3/b/${cfg.bin}/latest`, {
-      headers: { 'X-Master-Key': cfg.key }
+    const res = await fetch(`https://api.github.com/gists/${cfg.bin}`, {
+      headers: {
+        'Authorization': 'token ' + cfg.key,
+        'Accept': 'application/vnd.github.v3+json'
+      }
     });
     if (!res.ok) {
       if (res.status === 403 || res.status === 401) {
         localStorage.removeItem('ip_cfg');
-        showLoginError('🔑 Secret Key หรือ BIN ID ไม่ถูกต้อง (HTTP ' + res.status + ')<br>กรุณากรอกใหม่อีกครั้ง');
+        showLoginError('🔑 GitHub Token หรือ Gist ID ไม่ถูกต้อง (HTTP ' + res.status + ')<br>กรุณากรอกใหม่อีกครั้ง');
         btn.classList.remove('loading');
         btn.textContent = '⟳ Refresh';
         return;
       }
       throw new Error(`HTTP ${res.status}`);
     }
-    const json = await res.json();
-    const data = json.record || {};
+    const gist = await res.json();
+    const fileContent = gist.files?.['ip-monitor.json']?.content || '{}';
+    const data = JSON.parse(fileContent);
     rawRecord = data;
     const buildingsObj = data.buildings || {};
     const buildings = Object.entries(buildingsObj).map(([k, v]) => ({...v, _key: k}));
@@ -608,7 +614,7 @@ async function loadData() {
       <div class="center-msg">
         <div class="icon">&#10060;</div>
         <h2>โหลดข้อมูลไม่สำเร็จ</h2>
-        <p>${e.message}<br>ตรวจสอบ Secret Key และ BIN ID อีกครั้ง</p>
+        <p>${e.message}<br>ตรวจสอบ GitHub Token และ Gist ID อีกครั้ง</p>
       </div>`;
   }
 
