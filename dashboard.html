@@ -169,8 +169,8 @@ code{background:rgba(0,224,255,.08);color:var(--accent);padding:2px 8px;border-r
 .port-btn.p443:hover{background:rgba(0,217,126,.18);border-color:var(--green)}
 .port-btn.p81{border-color:rgba(160,139,255,.2);background:rgba(160,139,255,.06);color:#a08bff}
 .port-btn.p81:hover{background:rgba(160,139,255,.18);border-color:#a08bff}
-.port-btn.p8006{border-color:rgba(251,146,60,.2);background:rgba(251,146,60,.06);color:#fb923c}
-.port-btn.p8006:hover{background:rgba(251,146,60,.18);border-color:#fb923c}
+.port-btn.p1223{border-color:rgba(255,179,0,.2);background:rgba(255,179,0,.06);color:#ffb300}
+.port-btn.p1223:hover{background:rgba(255,179,0,.18);border-color:#ffb300}
 
 
 /* -- DELETE BUTTON -- */
@@ -234,9 +234,54 @@ code{background:rgba(0,224,255,.08);color:var(--accent);padding:2px 8px;border-r
 @keyframes up{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
 @keyframes spin{to{transform:rotate(360deg)}}
+
+/* -- LOGIN SCREEN -- */
+.login-screen{position:fixed;inset:0;background:#070d1a;z-index:999;
+  display:flex;align-items:center;justify-content:center}
+.login-card{background:linear-gradient(135deg,#0d1b2e,#0f2240);
+  border:1px solid rgba(0,224,255,.15);border-radius:20px;
+  padding:40px 44px;width:380px;max-width:90vw;
+  box-shadow:0 30px 80px rgba(0,0,0,.7),0 0 0 1px rgba(0,224,255,.08)}
+.login-logo{font-size:48px;text-align:center;margin-bottom:8px}
+.login-title{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;
+  color:var(--text);text-align:center;margin-bottom:4px}
+.login-sub{font-size:12px;color:var(--muted);text-align:center;margin-bottom:28px}
+.login-field{margin-bottom:16px}
+.login-field label{display:block;font-size:11px;color:var(--muted);
+  letter-spacing:1px;margin-bottom:6px}
+.login-field input{width:100%;box-sizing:border-box;background:rgba(0,0,0,.3);
+  border:1px solid var(--border2);border-radius:8px;padding:11px 14px;
+  color:var(--text);font-family:'JetBrains Mono',monospace;font-size:14px;
+  outline:none;transition:border .2s}
+.login-field input:focus{border-color:var(--accent)}
+.login-error{display:none;background:rgba(255,61,90,.1);border:1px solid rgba(255,61,90,.3);
+  border-radius:8px;padding:9px 14px;margin-bottom:14px;
+  font-size:12px;color:#ff3d5a;text-align:center}
+.login-btn{width:100%;padding:13px;border-radius:10px;border:none;
+  background:linear-gradient(135deg,var(--accent),#0099bb);
+  color:#070d1a;font-family:'Syne',sans-serif;font-size:14px;font-weight:800;
+  cursor:pointer;transition:all .2s;letter-spacing:.5px}
+.login-btn:hover{transform:translateY(-1px);box-shadow:0 8px 24px rgba(0,224,255,.3)}
+.login-btn:active{transform:translateY(0)}
 </style>
 </head>
 <body>
+
+<!-- LOGIN SCREEN -->
+<div class="login-screen" id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">🌐</div>
+    <div class="login-title">IP Monitor</div>
+    <div class="login-sub">Building Public IP Tracker</div>
+    <div class="login-error" id="login-err">❌ รหัสผ่านไม่ถูกต้อง</div>
+    <div class="login-field">
+      <label>PASSWORD</label>
+      <input type="password" id="login-pass" placeholder="••••••••••"
+        onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button class="login-btn" onclick="doLogin()">🔓 เข้าสู่ระบบ</button>
+  </div>
+</div>
 
 <header>
   <div class="brand">
@@ -249,7 +294,6 @@ code{background:rgba(0,224,255,.08);color:var(--accent);padding:2px 8px;border-r
   <div class="header-right">
     <span id="ts">-</span>
     <button class="refresh-btn" id="refresh-btn" onclick="loadData()">&#8635; Refresh</button>
-    <button class="logout-btn" onclick="clearConfig()" title="ออกจากระบบ / เปลี่ยน Key">🔑 Logout</button>
   </div>
 </header>
 
@@ -287,29 +331,11 @@ code{background:rgba(0,224,255,.08);color:var(--accent);padding:2px 8px;border-r
 </div>
 <div class="config-overlay" id="config-panel" style="display:none">
   <div class="config-box">
-    <h3>&#128274; IP Monitor Login</h3>
-    <p id="login-msg" style="color:#4a6080;margin-bottom:20px;font-size:12px">ใส่ GitHub Token และ Gist ID เพื่อเข้าใช้งาน Dashboard</p>
-    <div id="login-error" style="display:none;background:rgba(255,61,90,.1);border:1px solid rgba(255,61,90,.3);
-      border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:12px;color:#ff3d5a;line-height:1.7"></div>
-    <div class="config-field">
-      <label>GITHUB TOKEN (ghp_...)</label>
-      <div style="position:relative">
-        <input type="password" id="inp-key" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" style="padding-right:44px">
-        <button onclick="toggleKey()" id="eye-btn" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);
-          background:none;border:none;color:#4a6080;cursor:pointer;font-size:16px;padding:4px">👁️</button>
-      </div>
-    </div>
-    <div class="config-field">
-      <label>GIST ID</label>
-      <input type="text" id="inp-bin" placeholder="abc123def456...">
-    </div>
-    <div style="font-size:11px;color:#4a6080;margin-bottom:16px;line-height:1.8">
-      📌 GitHub Token: <a href="https://github.com/settings/tokens" target="_blank" style="color:#00e0ff">github.com/settings/tokens</a>
-      → Generate new token (classic) → ติ๊ก <b style="color:#d8e6f5">gist</b><br>
-      📌 Gist ID: ดูได้จาก URL ของ Gist เช่น gist.github.com/user/<b style="color:#d8e6f5">abc123def456</b>
-    </div>
+    <h3>⚠️ โหลดข้อมูลไม่สำเร็จ</h3>
+    <div id="login-error" style="background:rgba(255,61,90,.1);border:1px solid rgba(255,61,90,.3);
+      border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:12px;color:#ff3d5a;line-height:1.7">เกิดข้อผิดพลาด กรุณาลองใหม่</div>
     <div class="config-actions">
-      <button class="config-save" onclick="saveConfig()">&#10003; Login &amp; View Dashboard</button>
+      <button class="config-save" onclick="document.getElementById('config-panel').style.display='none';loadData()">&#8635; ลองใหม่</button>
     </div>
   </div>
 </div>
@@ -323,48 +349,63 @@ code{background:rgba(0,224,255,.08);color:var(--accent);padding:2px 8px;border-r
 
 <script>
 
+// ── Login ─────────────────────────────────────
+const PASS_HASH = '5e5e485972493f3d704cd81026be9f19'; // md5("smartzone")
+
+async function md5(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+async function doLogin() {
+  const pass = document.getElementById('login-pass').value;
+  if (!pass) return;
+  // ใช้ SHA-256 แทน
+  const hash = await md5(pass);
+  const correct = await md5('smartzone');
+  if (hash === correct) {
+    sessionStorage.setItem('ip_auth', '1');
+    document.getElementById('login-screen').style.display = 'none';
+    loadData();
+  } else {
+    document.getElementById('login-err').style.display = 'block';
+    document.getElementById('login-pass').value = '';
+    document.getElementById('login-pass').focus();
+  }
+}
+
+function checkAuth() {
+  if (sessionStorage.getItem('ip_auth') === '1') {
+    document.getElementById('login-screen').style.display = 'none';
+    return true;
+  }
+  return false;
+}
+
+const API_URL = "https://script.google.com/macros/s/AKfycbzPjPr_QC1CAy1Ioxe5piDumpaP1NK3yyyhdyl8PTc9M7CbxpYv6FQt7ZPo9hJ1kJWF/exec";
+const AUTO_REFRESH_SEC = 60;
+
+function isStale(updated_at, minutes) {
+  if (!updated_at) return true;
+  try {
+    return (Date.now() - new Date(updated_at).getTime()) / 60000 > (minutes || 10);
+  } catch(e) { return true; }
+}
+
 function showLoginError(msg) {
   const panel = document.getElementById('config-panel');
   const errDiv = document.getElementById('login-error');
   panel.style.display = 'flex';
-  errDiv.style.display = 'block';
   errDiv.innerHTML = msg;
-  document.getElementById('inp-key').value = '';
-  document.getElementById('inp-bin').value = '';
 }
 
 function toggleKey() {
   const inp = document.getElementById('inp-key');
-  inp.type = inp.type === 'password' ? 'text' : 'password';
+  if (inp) inp.type = inp.type === 'password' ? 'text' : 'password';
 }
-
-function isStale(updated_at, minutes) {
-  if (!updated_at) return true;
-  minutes = minutes || 10;
-  try {
-    var diff = (Date.now() - new Date(updated_at).getTime()) / 60000;
-    return diff > minutes;
-  } catch(e) { return true; }
-}
-
-const LS_KEY = 'ip_dashboard_config';
-const AUTO_REFRESH_SEC = 60;
-
-function getConfig() {
-  try { return JSON.parse(localStorage.getItem('ip_cfg') || '{}'); } catch { return {}; }
-}
-function saveConfig() {
-  var key = document.getElementById('inp-key').value.trim();
-  var bin = document.getElementById('inp-bin').value.trim();
-  if (!key || !bin) { alert('Please enter both GitHub Token and Gist ID'); return; }
-  localStorage.setItem('ip_cfg', JSON.stringify({key:key, bin:bin}));
-  document.getElementById('config-panel').style.display = 'none';
-  loadData();
-}
-function clearConfig() {
-  localStorage.removeItem('ip_cfg');
-  location.reload();
-}
+function saveConfig() {}
+function clearConfig() { location.reload(); }
+function getConfig() { return { key: 'x', bin: 'x' }; }
 
 function buildCard(b, idx) {
   const chips = (b.public_ips || []).map((ip, i) => `
@@ -377,6 +418,7 @@ function buildCard(b, idx) {
           <a class="port-btn p443" href="https://${ip}:443"  target="_blank" title="Open port 443" >🔒 443</a>
           <a class="port-btn p81"  href="http://${ip}:81/admin/smartzone.php"    target="_blank" title="Open port 81"  >🌐 81</a>
           <a class="port-btn p8006" href="https://${ip}:8006" target="_blank" title="Open port 8006">⚡ 8006</a>
+          <a class="port-btn p1223" href="ssh://${ip}:1223" title="SSH port 1223">🔐 1223</a>
         </div>
       </div>
     </div>`).join('');
@@ -512,15 +554,10 @@ async function deleteBuilding(encodedKey, name) {
     const newRecord = JSON.parse(JSON.stringify(rawRecord));
     delete newRecord.buildings[key];
 
-    const gistContent = JSON.stringify(newRecord, null, 2);
-    const res = await fetch(`https://api.github.com/gists/${cfg.bin}`, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'token ' + cfg.key,
-        'Accept': 'application/vnd.github.v3+json'
-      },
-      body: JSON.stringify({ files: { 'ip-monitor.json': { content: gistContent } } })
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'delete', key: key })
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
@@ -545,36 +582,17 @@ async function deleteBuilding(encodedKey, name) {
 }
 
 async function loadData() {
-  const cfg = getConfig();
-  if (!cfg.key || !cfg.bin) {
-    document.getElementById('config-panel').style.display = 'flex';
-    return;
-  }
-
+  if (!checkAuth()) return;
   const btn = document.getElementById('refresh-btn');
   btn.classList.add('loading');
   btn.textContent = '⟳ Loading...';
 
   try {
-    const res = await fetch(`https://api.github.com/gists/${cfg.bin}`, {
-      headers: {
-        'Authorization': 'token ' + cfg.key,
-        'Accept': 'application/vnd.github.v3+json'
-      }
-    });
-    if (!res.ok) {
-      if (res.status === 403 || res.status === 401) {
-        localStorage.removeItem('ip_cfg');
-        showLoginError('🔑 GitHub Token หรือ Gist ID ไม่ถูกต้อง (HTTP ' + res.status + ')<br>กรุณากรอกใหม่อีกครั้ง');
-        btn.classList.remove('loading');
-        btn.textContent = '⟳ Refresh';
-        return;
-      }
-      throw new Error(`HTTP ${res.status}`);
-    }
-    const gist = await res.json();
-    const fileContent = gist.files?.['ip-monitor.json']?.content || '{}';
-    const data = JSON.parse(fileContent);
+    const res = await fetch(API_URL + '?t=' + Date.now());
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const json = await res.json();
+    if (!json.ok) throw new Error(json.error || 'API Error');
+    const data = { buildings: json.buildings || {} };
     rawRecord = data;
     const buildingsObj = data.buildings || {};
     const buildings = Object.entries(buildingsObj).map(([k, v]) => ({...v, _key: k}));
@@ -614,7 +632,7 @@ async function loadData() {
       <div class="center-msg">
         <div class="icon">&#10060;</div>
         <h2>โหลดข้อมูลไม่สำเร็จ</h2>
-        <p>${e.message}<br>ตรวจสอบ GitHub Token และ Gist ID อีกครั้ง</p>
+        <p>${e.message}<br>ตรวจสอบการเชื่อมต่อ Internet</p>
       </div>`;
   }
 
@@ -625,11 +643,16 @@ async function loadData() {
 // Auto refresh
 let countdown = AUTO_REFRESH_SEC;
 setInterval(() => {
+  if (!sessionStorage.getItem('ip_auth')) return;
   countdown--;
   if (countdown <= 0) { loadData(); countdown = AUTO_REFRESH_SEC; }
 }, 1000);
 
-loadData();
+if (checkAuth()) {
+  loadData();
+} else {
+  document.getElementById('login-pass').focus();
+}
 </script>
 </body>
 </html>
