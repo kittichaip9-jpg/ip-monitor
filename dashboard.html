@@ -173,6 +173,14 @@ code{background:rgba(0,224,255,.08);color:var(--accent);padding:2px 8px;border-r
 .port-btn.p1223:hover{background:rgba(255,179,0,.18);border-color:#ffb300}
 
 
+.ip-pub-row{display:flex;align-items:center;gap:6px;margin-bottom:4px}
+.pub-badge{font-size:9px;background:rgba(0,224,255,.1);border:1px solid rgba(0,224,255,.2);
+  color:var(--accent);padding:1px 5px;border-radius:4px;letter-spacing:.5px;white-space:nowrap}
+.ip-private{display:flex;align-items:center;gap:6px;margin-bottom:6px}
+.priv-label{font-size:9px;background:rgba(160,139,255,.1);border:1px solid rgba(160,139,255,.2);
+  color:#a08bff;padding:1px 5px;border-radius:4px;letter-spacing:.5px;white-space:nowrap}
+.priv-val{font-family:'JetBrains Mono',monospace;font-size:12px;color:#a08bff;opacity:.85}
+
 /* -- DELETE BUTTON -- */
 .delete-btn{position:absolute;top:12px;right:12px;width:28px;height:28px;border-radius:6px;
   border:1px solid rgba(255,61,90,.25);background:rgba(255,61,90,.07);color:var(--red);
@@ -407,21 +415,46 @@ function saveConfig() {}
 function clearConfig() { location.reload(); }
 function getConfig() { return { key: 'x', bin: 'x' }; }
 
+function isPrivateIP(ip) {
+  return /^10\./.test(ip) ||
+         /^172\.(1[6-9]|2\d|3[01])\./.test(ip) ||
+         /^192\.168\./.test(ip) ||
+         /^127\./.test(ip) ||
+         /^169\.254\./.test(ip);
+}
+
 function buildCard(b, idx) {
-  const chips = (b.public_ips || []).map((ip, i) => `
+  // สร้าง chip สำหรับแต่ละ interface (แสดงทั้ง Public + Private)
+  const ifaces = b.interfaces || [];
+  const chips = (b.public_ips || []).map((pubIP, i) => {
+    // หา interface ที่ตรงกับ public IP นี้
+    const iface = ifaces.find(f => f.public_ip === pubIP);
+    const privIP = iface ? iface.local_ip : null;
+    const privTag = privIP ? `
+      <div class="ip-private">
+        <span class="priv-label">🔒 Private</span>
+        <span class="priv-val">${privIP}</span>
+      </div>` : '';
+
+    return `
     <div class="ip-chip ${i > 0 ? 'wan'+(i+1) : ''}">
       <div>
         <span class="wan-label">WAN ${i+1}</span>
-        <span class="ip-val">${ip}</span>
+        <div class="ip-pub-row">
+          <span class="pub-badge">🌐 Public</span>
+          <span class="ip-val">${pubIP}</span>
+        </div>
+        ${privTag}
         <div class="port-btns">
-          <a class="port-btn"      href="https://${ip}:9443" target="_blank" title="Open port 9443">🔗 9443</a>
-          <a class="port-btn p443" href="https://${ip}:443"  target="_blank" title="Open port 443" >🔒 443</a>
-          <a class="port-btn p81"  href="http://${ip}:81/admin/smartzone.php"    target="_blank" title="Open port 81"  >🌐 81</a>
-          <a class="port-btn p8006" href="https://${ip}:8006" target="_blank" title="Open port 8006">⚡ 8006</a>
-          <a class="port-btn p1223" href="ssh://${ip}:1223" title="SSH port 1223">🔐 1223</a>
+          <a class="port-btn"      href="https://${pubIP}:9443" target="_blank" title="Open port 9443">🔗 9443</a>
+          <a class="port-btn p443" href="https://${pubIP}:443"  target="_blank" title="Open port 443" >🔒 443</a>
+          <a class="port-btn p81"  href="http://${pubIP}:81/admin/smartzone.php" target="_blank" title="Open port 81">🌐 81</a>
+          <a class="port-btn p8006" href="https://${pubIP}:8006" target="_blank" title="Open port 8006">⚡ 8006</a>
+          <a class="port-btn p1223" href="ssh://${pubIP}:1223" title="SSH port 1223">🔐 1223</a>
         </div>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 
   const noIP = !b.public_ips || b.public_ips.length === 0;
   const badge = b.online
@@ -554,14 +587,8 @@ async function deleteBuilding(encodedKey, name) {
     const newRecord = JSON.parse(JSON.stringify(rawRecord));
     delete newRecord.buildings[key];
 
-    const res = await fetch(API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'delete', key: key })
-    });
+    const res = await fetch(API_URL + '?action=delete&key=' + encodeURIComponent(key) + '&t=' + Date.now());
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const result = await res.json();
-    if (!result.ok) throw new Error(result.error || 'API Error');
 
     closeModal();
     // อัปเดต local state ทันทีโดยไม่ต้อง reload
